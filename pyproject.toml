@@ -1,0 +1,20 @@
+[project]
+name = "tarla-takip"
+version = "1.0.0"
+description = "Şaban Gök ve Oğulları - Tarla Masraf ve Kâr Durumu"
+requires-python = ">=3.10"
+dependencies = [
+    "flet>=0.24.0,<0.29.0",
+]
+
+[tool.flet]
+org = "com.sabangok.tarlatakip"
+product = "Tarla Masraf ve Kâr Durumu"
+company = "Şaban Gök ve Oğulları"
+copyright = "Copyright (C) 2026"
+
+[tool.flet.android]
+permissions = [
+    "android.permission.WRITE_EXTERNAL_STORAGE",
+    "android.permission.READ_EXTERNAL_STORAGE"
+]

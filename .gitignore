@@ -1,0 +1,8 @@
+﻿.venv/
+venv/
+build/
+__pycache__/
+*.pyc
+build_log.txt
+tarla_takip_flet-v3.zip
+Yeni Metin Belgesi.HTML
