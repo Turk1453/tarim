@@ -36,11 +36,11 @@ jobs:
 
       - name: Ensure Android SDK packages and licenses
         run: |
-          mkdir -p "/cmdline-tools"
-          if [ -d "/cmdline-tools/16.0" ] && [ ! -d "/cmdline-tools/latest" ]; then
-            ln -s "/cmdline-tools/16.0" "/cmdline-tools/latest"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          if [ -d "$ANDROID_HOME/cmdline-tools/16.0" ] && [ ! -d "$ANDROID_HOME/cmdline-tools/latest" ]; then
+            ln -s "$ANDROID_HOME/cmdline-tools/16.0" "$ANDROID_HOME/cmdline-tools/latest"
           fi
-          export PATH="/cmdline-tools/latest/bin:/platform-tools:"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
 
