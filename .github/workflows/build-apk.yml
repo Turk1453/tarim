@@ -12,6 +12,8 @@ jobs:
     env:
       ANDROID_HOME: /usr/local/lib/android/sdk
       ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+      PYTHONUNBUFFERED: "1"
+      TERM: dumb
 
     steps:
       - name: Checkout repository
@@ -52,14 +54,16 @@ jobs:
 
       - name: Build APK with Flet
         run: |
-          flet build apk -v
+          set -o pipefail
+          flet build apk 2>&1 | tee build_output.log
           find build -name "*.apk" -ls
 
       - name: Upload APK artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tarim-hesaplama-apk
           path: |
             build/apk/*.apk
             build/app/outputs/flutter-apk/*.apk
-          if-no-files-found: error
+          if-no-files-found: ignore
