@@ -3,23 +3,28 @@ from datetime import date
 import flet as ft
 from database import TarlaDatabase
 
-PRIMARY_DARK = "#173c2b"
-PRIMARY_GREEN = "#24633d"
-ACCENT_GREEN = "#438653"
-BG_LIGHT = "#f1f5f0"
+# --- KURUMSAL RENK PALETİ ---
+PRIMARY_DARK = "#143626"
+PRIMARY_GREEN = "#1e5638"
+ACCENT_GREEN = "#2e7d4f"
+BG_LIGHT = "#f4f7f4"
 CARD_BG = "#ffffff"
-SOFT_GREEN = "#edf5ee"
-DANGER_RED = "#b83b35"
-TEXT_DARK = "#26352b"
-TEXT_MUTED = "#718071"
+SOFT_GREEN = "#eaf3ec"
+SOFT_RED = "#fdf0ef"
+DANGER_RED = "#c0392b"
+TEXT_DARK = "#1c2b22"
+TEXT_MUTED = "#637368"
+BORDER_COLOR = "#dce5de"
 
 
 def tl_fmt(val: float) -> str:
-    return f"{val:,.2f} TL".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{val:,.2f} ₺".replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def num_fmt(val: float) -> str:
     s = f"{val:,.3f}".rstrip("0").rstrip(".")
+    if not s:
+        return "0"
     return s.replace(",", "X").replace(".", ",").replace("X", ".")
 
 
@@ -33,10 +38,15 @@ def parse_num(raw: str | None, default: float = 0.0) -> float:
 
 
 def main(page: ft.Page):
-    page.title = "Tarla Masraf & Kâr Hesaplama Sistemi"
+    page.title = "Şaban Gök ve Oğulları - Tarla Takip"
     page.bgcolor = BG_LIGHT
     page.theme_mode = ft.ThemeMode.LIGHT
     page.padding = 0
+
+    page.theme = ft.Theme(
+        color_scheme_seed=PRIMARY_GREEN,
+        font_family="Roboto",
+    )
 
     app_data_dir = os.getenv("FLET_APP_STORAGE_DATA") or os.path.dirname(os.path.abspath(__file__))
     os.makedirs(app_data_dir, exist_ok=True)
@@ -44,58 +54,203 @@ def main(page: ft.Page):
 
     def show_snack(msg: str, is_error: bool = False):
         page.snack_bar = ft.SnackBar(
-            content=ft.Text(msg, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
+            content=ft.Row(
+                [
+                    ft.Icon(
+                        ft.Icons.ERROR_OUTLINE if is_error else ft.Icons.CHECK_CIRCLE_OUTLINE,
+                        color=ft.Colors.WHITE,
+                        size=20,
+                    ),
+                    ft.Text(
+                        msg,
+                        color=ft.Colors.WHITE,
+                        weight=ft.FontWeight.W_600,
+                        expand=True,
+                    ),
+                ],
+                spacing=10,
+            ),
             bgcolor=DANGER_RED if is_error else PRIMARY_GREEN,
+            behavior=ft.SnackBarBehavior.FLOATING,
+            margin=ft.margin.all(12),
+            shape=ft.RoundedRectangleBorder(radius=10),
             duration=3000,
         )
         page.snack_bar.open = True
         page.update()
 
-    def stat_card(title: str, value: str, border_color: str = ACCENT_GREEN):
+    # --- STANDART FORM VE UI BİLEŞENLERİ (TÜM FLET SÜRÜMLERİYLE UYUMLU) ---
+    def styled_tf(label: str, value: str = "", hint_text: str | None = None, keyboard_type=None, multiline: bool = False, min_lines: int = 1, max_lines: int = 1):
+        return ft.TextField(
+            label=label,
+            value=value,
+            hint_text=hint_text,
+            keyboard_type=keyboard_type,
+            multiline=multiline,
+            min_lines=min_lines,
+            max_lines=max_lines,
+            border_radius=10,
+            filled=True,
+            fill_color="#f9fbf9",
+            border_color=BORDER_COLOR,
+            focused_border_color=PRIMARY_GREEN,
+            content_padding=ft.padding.symmetric(horizontal=14, vertical=12),
+            label_style=ft.TextStyle(color=TEXT_MUTED, size=13),
+        )
+
+    def styled_dd(label: str, options: list, value: str | None = None):
+        return ft.Dropdown(
+            label=label,
+            value=value,
+            options=options,
+            expand=True,
+            border_radius=10,
+            filled=True,
+            fill_color="#f9fbf9",
+            border_color=BORDER_COLOR,
+            focused_border_color=PRIMARY_GREEN,
+            content_padding=ft.padding.symmetric(horizontal=14, vertical=12),
+            label_style=ft.TextStyle(color=TEXT_MUTED, size=13),
+        )
+
+    def stat_card(title: str, value: str, icon: str, color: str = ACCENT_GREEN):
         return ft.Container(
+            col={"xs": 6, "sm": 6, "md": 3},
             content=ft.Column(
                 [
-                    ft.Text(title, size=12, color=TEXT_MUTED),
-                    ft.Text(value, size=17, weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
+                    ft.Row(
+                        [
+                            ft.Container(
+                                content=ft.Icon(icon, size=16, color=color),
+                                bgcolor=f"{color}18",
+                                padding=6,
+                                border_radius=8,
+                            ),
+                            ft.Text(
+                                title,
+                                size=12,
+                                color=TEXT_MUTED,
+                                weight=ft.FontWeight.W_500,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                                expand=True,
+                            ),
+                        ],
+                        spacing=8,
+                    ),
+                    ft.Text(
+                        value,
+                        size=16,
+                        weight=ft.FontWeight.BOLD,
+                        color=TEXT_DARK,
+                        max_lines=1,
+                        overflow=ft.TextOverflow.ELLIPSIS,
+                    ),
                 ],
-                spacing=4,
+                spacing=8,
             ),
             bgcolor=CARD_BG,
             padding=12,
-            border_radius=12,
-            border=ft.border.only(left=ft.BorderSide(5, border_color)),
-            shadow=ft.BoxShadow(blur_radius=6, color="#12000000", offset=ft.Offset(0, 2)),
-            expand=True,
+            border_radius=14,
+            border=ft.border.all(1, BORDER_COLOR),
+            shadow=ft.BoxShadow(blur_radius=8, color="#0d000000", offset=ft.Offset(0, 2)),
         )
 
-    def section_panel(title: str, controls: list):
+    def section_panel(title: str, controls: list, icon: str | None = None):
+        header_row = [
+            ft.Text(
+                title,
+                size=15,
+                weight=ft.FontWeight.BOLD,
+                color=PRIMARY_DARK,
+                expand=True,
+            )
+        ]
+        if icon:
+            header_row.insert(0, ft.Icon(icon, size=19, color=PRIMARY_GREEN))
+
         return ft.Container(
             content=ft.Column(
-                [ft.Text(title, size=16, weight=ft.FontWeight.BOLD, color=PRIMARY_GREEN), *controls],
-                spacing=10,
+                [
+                    ft.Row(header_row, spacing=8),
+                    ft.Divider(height=1, color=BORDER_COLOR),
+                    *controls,
+                ],
+                spacing=12,
             ),
             bgcolor=CARD_BG,
-            padding=14,
-            border_radius=12,
-            border=ft.border.all(1, "#dce6dc"),
-            margin=ft.margin.only(bottom=8),
+            padding=16,
+            border_radius=14,
+            border=ft.border.all(1, BORDER_COLOR),
+            shadow=ft.BoxShadow(blur_radius=6, color="#08000000", offset=ft.Offset(0, 2)),
         )
 
-    body_container = ft.Container(expand=True, padding=12)
+    def primary_btn(text: str, icon: str, on_click, bg: str = PRIMARY_GREEN):
+        return ft.ElevatedButton(
+            content=ft.Row(
+                [
+                    ft.Icon(icon, size=18, color=ft.Colors.WHITE),
+                    ft.Text(text, size=14, weight=ft.FontWeight.W_600, color=ft.Colors.WHITE),
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=8,
+            ),
+            bgcolor=bg,
+            height=46,
+            style=ft.ButtonStyle(
+                shape=ft.RoundedRectangleBorder(radius=10),
+                elevation=1,
+            ),
+            on_click=on_click,
+        )
 
+    body_container = ft.Container(expand=True)
+
+    # Çentik (Notch) ve durum çubuğu uyumlu üst başlık
     header = ft.Container(
-        content=ft.Column(
-            [
-                ft.Text("🌾 ŞABAN GÖK VE OĞULLARI", size=19, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                ft.Text("TARLA MASRAF & KÂR DURUMU", size=13, color="#e1f0e4", weight=ft.FontWeight.W_600),
-                ft.Text("Tarım İşletmesi Takip ve Hesaplama Sistemi", size=11, color="#c7dfce"),
-            ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=2,
+        content=ft.SafeArea(
+            bottom=False,
+            content=ft.Container(
+                padding=ft.padding.symmetric(vertical=12, horizontal=16),
+                content=ft.Row(
+                    [
+                        ft.Container(
+                            content=ft.Icon(ft.Icons.AGRICULTURE_ROUNDED, color=PRIMARY_DARK, size=24),
+                            bgcolor="#d7eadc",
+                            padding=10,
+                            border_radius=12,
+                        ),
+                        ft.Column(
+                            [
+                                ft.Text(
+                                    "ŞABAN GÖK VE OĞULLARI",
+                                    size=16,
+                                    weight=ft.FontWeight.BOLD,
+                                    color=ft.Colors.WHITE,
+                                    max_lines=1,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                ),
+                                ft.Text(
+                                    "Tarla Masraf & Kâr Yönetim Sistemi",
+                                    size=12,
+                                    color="#c5e0cd",
+                                    max_lines=1,
+                                    overflow=ft.TextOverflow.ELLIPSIS,
+                                ),
+                            ],
+                            spacing=2,
+                            expand=True,
+                        ),
+                    ],
+                    spacing=12,
+                ),
+            ),
         ),
-        bgcolor=PRIMARY_DARK,
-        padding=ft.padding.symmetric(vertical=12, horizontal=12),
-        alignment=ft.alignment.center,
+        gradient=ft.LinearGradient(
+            begin=ft.alignment.top_left,
+            end=ft.alignment.bottom_right,
+            colors=[PRIMARY_DARK, PRIMARY_GREEN],
+        ),
     )
 
     # --- SAYFA 0: ANA SAYFA & TARLALARIM ---
@@ -107,70 +262,151 @@ def main(page: ft.Page):
         for ozet in rapor["tarla_ozetleri"]:
             t = ozet["tarla"]
             t_net = ozet["net"]
+            is_profit = t_net >= 0
             tarla_kartlari.append(
                 ft.Container(
                     content=ft.Column(
                         [
                             ft.Row(
                                 [
-                                    ft.Text(f"🌱 {t['ad']}", size=16, weight=ft.FontWeight.BOLD, color=PRIMARY_GREEN),
+                                    ft.Row(
+                                        [
+                                            ft.Icon(ft.Icons.ECO_ROUNDED, color=PRIMARY_GREEN, size=20),
+                                            ft.Text(
+                                                t["ad"],
+                                                size=16,
+                                                weight=ft.FontWeight.BOLD,
+                                                color=TEXT_DARK,
+                                                max_lines=1,
+                                                overflow=ft.TextOverflow.ELLIPSIS,
+                                            ),
+                                        ],
+                                        spacing=6,
+                                        expand=True,
+                                    ),
                                     ft.Container(
-                                        content=ft.Text(t["urun"] or "Henüz girilmedi", size=12, color=PRIMARY_DARK),
-                                        bgcolor=SOFT_GREEN,
-                                        padding=ft.padding.symmetric(horizontal=8, vertical=4),
-                                        border_radius=6,
+                                        content=ft.Text(
+                                            t["urun"] or "Ürün Yok",
+                                            size=11,
+                                            weight=ft.FontWeight.W_600,
+                                            color=PRIMARY_DARK if t["urun"] else TEXT_MUTED,
+                                        ),
+                                        bgcolor=SOFT_GREEN if t["urun"] else "#eef1ee",
+                                        padding=ft.padding.symmetric(horizontal=10, vertical=4),
+                                        border_radius=20,
                                     ),
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             ),
-                            ft.Text(f"Dönüm: {num_fmt(t['donum'])} ({num_fmt(t['donum']*2500)} m²)", size=13, color=TEXT_MUTED),
-                            ft.Row(
-                                [
-                                    ft.Text(f"Gider: {tl_fmt(ozet['toplam_gider'])}", size=13, weight=ft.FontWeight.W_600),
-                                    ft.Text(f"Gelir: {tl_fmt(ozet['gelir'])}", size=13, weight=ft.FontWeight.W_600, color=PRIMARY_GREEN),
-                                ],
-                                alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                            ft.Text(
+                                f"Alan: {num_fmt(t['donum'])} Dönüm ({num_fmt(t['donum']*2500)} m²)",
+                                size=12,
+                                color=TEXT_MUTED,
+                            ),
+                            ft.Container(
+                                bgcolor="#f8faf8",
+                                padding=10,
+                                border_radius=10,
+                                content=ft.Row(
+                                    [
+                                        ft.Column(
+                                            [
+                                                ft.Text("Toplam Gider", size=11, color=TEXT_MUTED),
+                                                ft.Text(
+                                                    tl_fmt(ozet["toplam_gider"]),
+                                                    size=13,
+                                                    weight=ft.FontWeight.BOLD,
+                                                    color=DANGER_RED,
+                                                ),
+                                            ],
+                                            spacing=2,
+                                            expand=True,
+                                        ),
+                                        ft.Container(width=1, height=28, bgcolor=BORDER_COLOR),
+                                        ft.Column(
+                                            [
+                                                ft.Text("Toplam Gelir", size=11, color=TEXT_MUTED),
+                                                ft.Text(
+                                                    tl_fmt(ozet["gelir"]),
+                                                    size=13,
+                                                    weight=ft.FontWeight.BOLD,
+                                                    color=PRIMARY_GREEN,
+                                                ),
+                                            ],
+                                            spacing=2,
+                                            expand=True,
+                                            horizontal_alignment=ft.CrossAxisAlignment.END,
+                                        ),
+                                    ],
+                                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                                ),
                             ),
                             ft.Row(
                                 [
-                                    ft.Text(
-                                        f"Net: {tl_fmt(t_net)}",
-                                        size=14,
-                                        weight=ft.FontWeight.BOLD,
-                                        color=PRIMARY_GREEN if t_net >= 0 else DANGER_RED,
+                                    ft.Container(
+                                        bgcolor=SOFT_GREEN if is_profit else SOFT_RED,
+                                        padding=ft.padding.symmetric(horizontal=10, vertical=6),
+                                        border_radius=8,
+                                        content=ft.Text(
+                                            f"Net: {tl_fmt(t_net)}",
+                                            size=13,
+                                            weight=ft.FontWeight.BOLD,
+                                            color=PRIMARY_GREEN if is_profit else DANGER_RED,
+                                        ),
                                     ),
-                                    ft.ElevatedButton(
-                                        "Tarlayı Aç & Düzenle",
-                                        bgcolor=PRIMARY_GREEN,
-                                        color=ft.Colors.WHITE,
+                                    ft.OutlinedButton(
+                                        content=ft.Row(
+                                            [
+                                                ft.Icon(ft.Icons.EDIT_NOTE_ROUNDED, size=18),
+                                                ft.Text("Düzenle", size=13, weight=ft.FontWeight.W_600),
+                                            ],
+                                            spacing=4,
+                                        ),
+                                        style=ft.ButtonStyle(
+                                            color=PRIMARY_GREEN,
+                                            side=ft.BorderSide(1.2, PRIMARY_GREEN),
+                                            shape=ft.RoundedRectangleBorder(radius=8),
+                                        ),
                                         on_click=lambda e, tid=t["id"]: open_tarla_editor(tid),
                                     ),
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             ),
                         ],
-                        spacing=6,
+                        spacing=10,
                     ),
                     bgcolor=CARD_BG,
                     padding=14,
-                    border_radius=12,
-                    border=ft.border.all(1, "#dce6dc"),
+                    border_radius=14,
+                    border=ft.border.all(1, BORDER_COLOR),
+                    shadow=ft.BoxShadow(blur_radius=6, color="#08000000", offset=ft.Offset(0, 2)),
                 )
             )
 
         return ft.ListView(
-            [
-                ft.Text("Genel Durum", size=18, weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
-                ft.Row([stat_card("Toplam Tarla", str(rapor["tarla_sayisi"])), stat_card("Toplam Dönüm", num_fmt(rapor["toplam_donum"]))], spacing=10),
-                ft.Row([stat_card("Toplam Gelir", tl_fmt(rapor["toplam_gelir"]), PRIMARY_GREEN), stat_card("Toplam Gider", tl_fmt(rapor["toplam_gider"]), DANGER_RED)], spacing=10),
-                ft.Row([stat_card("Net Kâr / Zarar", tl_fmt(rapor["net_kar"]), net_renk), stat_card("Toplam Hasat", f"{num_fmt(rapor['toplam_hasat'])} Ton")], spacing=10),
-                ft.Row([stat_card("Ortak Gider", tl_fmt(rapor["ortak_gider"])), stat_card("Toplam Alan", f"{num_fmt(rapor['toplam_alan'])} m²")], spacing=10),
-                ft.Divider(height=10, color="transparent"),
-                ft.Text("🌱 Tarlalarım (10 Tarla)", size=18, weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
+            padding=14,
+            spacing=12,
+            expand=True,
+            controls=[
+                ft.Text("İşletme Özeti", size=17, weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                ft.ResponsiveRow(
+                    spacing=10,
+                    run_spacing=10,
+                    controls=[
+                        stat_card("Toplam Tarla", f"{rapor['tarla_sayisi']} Adet", ft.Icons.GRID_VIEW_ROUNDED),
+                        stat_card("Toplam Dönüm", f"{num_fmt(rapor['toplam_donum'])} Dönüm", ft.Icons.SQUARE_FOOT_ROUNDED),
+                        stat_card("Toplam Gelir", tl_fmt(rapor["toplam_gelir"]), ft.Icons.TRENDING_UP_ROUNDED, PRIMARY_GREEN),
+                        stat_card("Toplam Gider", tl_fmt(rapor["toplam_gider"]), ft.Icons.TRENDING_DOWN_ROUNDED, DANGER_RED),
+                        stat_card("Net Kâr / Zarar", tl_fmt(rapor["net_kar"]), ft.Icons.ACCOUNT_BALANCE_WALLET_ROUNDED, net_renk),
+                        stat_card("Toplam Hasat", f"{num_fmt(rapor['toplam_hasat'])} Ton", ft.Icons.AGRICULTURE_ROUNDED),
+                        stat_card("Ortak Gider", tl_fmt(rapor["ortak_gider"]), ft.Icons.PIE_CHART_ROUNDED),
+                        stat_card("Toplam Alan", f"{num_fmt(rapor['toplam_alan'])} m²", ft.Icons.MAP_OUTLINED),
+                    ],
+                ),
+                ft.Divider(height=4, color="transparent"),
+                ft.Text("Tarlalarım (10 Tarla)", size=17, weight=ft.FontWeight.BOLD, color=TEXT_DARK),
                 *tarla_kartlari,
             ],
-            spacing=8,
-            expand=True,
         )
 
     # --- TARLA DÜZENLEME EKRANI ---
@@ -180,9 +416,9 @@ def main(page: ft.Page):
             return
         t = ozet["tarla"]
 
-        ad_tf = ft.TextField(label="Tarla Adı", value=t["ad"])
-        urun_tf = ft.TextField(label="Ekili Ürün", value=t["urun"], hint_text="Buğday, arpa, mısır")
-        donum_tf = ft.TextField(label="Tarla Dönümü", value=str(t["donum"]), keyboard_type=ft.KeyboardType.NUMBER)
+        ad_tf = styled_tf("Tarla Adı", value=t["ad"])
+        urun_tf = styled_tf("Ekili Ürün", value=t["urun"], hint_text="Buğday, arpa, mısır")
+        donum_tf = styled_tf("Tarla Dönümü", value=str(t["donum"]), keyboard_type=ft.KeyboardType.NUMBER)
         m2_txt = ft.Text(f"Metrekare: {num_fmt(t['donum']*2500)} m² (1 dönüm = 2.500 m²)", size=12, color=TEXT_MUTED)
 
         def on_donum_change(e):
@@ -192,12 +428,12 @@ def main(page: ft.Page):
 
         donum_tf.on_change = on_donum_change
 
-        tohum_tf = ft.TextField(label="Tohum Gideri (TL)", value=str(t["tohum_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
-        mazot_tf = ft.TextField(label="Doğrudan Mazot Gideri (TL)", value=str(t["mazot_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
-        su_tf = ft.TextField(label="Su Gideri (TL)", value=str(t["su_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
-        malzeme_tf = ft.TextField(label="Malzeme Gideri (TL)", value=str(t["malzeme_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
-        hasat_tf = ft.TextField(label="Hasat Ücreti (TL)", value=str(t["hasat_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
-        diger_tf = ft.TextField(label="Diğer Giderler (TL)", value=str(t["diger_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
+        tohum_tf = styled_tf("Tohum Gideri (₺)", value=str(t["tohum_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
+        mazot_tf = styled_tf("Doğrudan Mazot Gideri (₺)", value=str(t["mazot_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
+        su_tf = styled_tf("Su Gideri (₺)", value=str(t["su_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
+        malzeme_tf = styled_tf("Malzeme Gideri (₺)", value=str(t["malzeme_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
+        hasat_tf = styled_tf("Hasat Ücreti (₺)", value=str(t["hasat_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
+        diger_tf = styled_tf("Diğer Giderler (₺)", value=str(t["diger_gider"]), keyboard_type=ft.KeyboardType.NUMBER)
 
         def save_tarla(e):
             db.update_tarla(
@@ -218,75 +454,97 @@ def main(page: ft.Page):
             open_tarla_editor(tarla_id)
 
         detay_satirlari = [
-            ft.Text("📋 Bu Tarlanın Kapsamlı Finansal Dökümü", weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
+            ft.Text("Kapsamlı Finansal Döküm", size=15, weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
+            ft.Divider(height=1, color="#c0d8c3"),
             ft.Text(f"1. Sabit/Temel Giderler: {tl_fmt(ozet['temel'])}", size=13),
-            ft.Text(f"2. Tarla Gider Girişi (Su, Elektrik vb.): {tl_fmt(ozet['ek_gider'])}", size=13),
+            ft.Text(f"2. Tarla Ek Giderleri: {tl_fmt(ozet['ek_gider'])}", size=13),
         ]
         for eg in ozet["ek_liste"]:
-            detay_satirlari.append(ft.Text(f"   • {eg['tur']} ({eg['aciklama'] or 'Açıklamasız'}): {tl_fmt(eg['tutar'])}", size=12, color=TEXT_MUTED))
+            detay_satirlari.append(
+                ft.Text(f"   • {eg['tur']} ({eg['aciklama'] or 'Açıklamasız'}): {tl_fmt(eg['tutar'])}", size=12, color=TEXT_MUTED)
+            )
 
-        detay_satirlari.append(ft.Text(f"3. İlaç & Gübre Deposu Maliyeti: {tl_fmt(ozet['ilac_gubre'])}", size=13))
+        detay_satirlari.append(ft.Text(f"3. İlaç & Gübre Maliyeti: {tl_fmt(ozet['ilac_gubre'])}", size=13))
         for il in ozet["ilac_liste"]:
-            detay_satirlari.append(ft.Text(f"   • {il['urun_ad'] or 'Ürün'} ({num_fmt(il['miktar'])} {il['temel_birim'] or ''}): {tl_fmt(il['maliyet'])}", size=12, color=TEXT_MUTED))
+            detay_satirlari.append(
+                ft.Text(f"   • {il['urun_ad'] or 'Ürün'} ({num_fmt(il['miktar'])} {il['temel_birim'] or ''}): {tl_fmt(il['maliyet'])}", size=12, color=TEXT_MUTED)
+            )
 
         detay_satirlari.append(ft.Text(f"4. Mazot Deposu Maliyeti: {tl_fmt(ozet['mazot_depo'])}", size=13))
         for mz in ozet["mazot_liste"]:
-            detay_satirlari.append(ft.Text(f"   • {num_fmt(mz['miktar'])} L Mazot Çıkışı: {tl_fmt(mz['maliyet'])}", size=12, color=TEXT_MUTED))
+            detay_satirlari.append(
+                ft.Text(f"   • {num_fmt(mz['miktar'])} L Mazot Çıkışı: {tl_fmt(mz['maliyet'])}", size=12, color=TEXT_MUTED)
+            )
 
         detay_satirlari.extend([
             ft.Text(f"5. Ortak Gider Payı: {tl_fmt(ozet['ortak_pay'])}", size=13),
-            ft.Divider(height=6),
-            ft.Text(f"Toplam Gider: {tl_fmt(ozet['toplam_gider'])}", weight=ft.FontWeight.BOLD),
+            ft.Divider(height=6, color="#c0d8c3"),
+            ft.Text(f"Toplam Gider: {tl_fmt(ozet['toplam_gider'])}", weight=ft.FontWeight.BOLD, color=DANGER_RED),
             ft.Text(f"Toplam Gelir: {tl_fmt(ozet['gelir'])}", weight=ft.FontWeight.BOLD, color=PRIMARY_GREEN),
         ])
         for hs in ozet["hasat_liste"]:
-            detay_satirlari.append(ft.Text(f"   • {hs['urun']}: {num_fmt(hs['miktar'])} Ton - Gelir: {tl_fmt(hs['gelir'])} (Alıcı: {hs['alici'] or '-'})", size=12, color=TEXT_MUTED))
+            detay_satirlari.append(
+                ft.Text(f"   • {hs['urun']}: {num_fmt(hs['miktar'])} Ton - Gelir: {tl_fmt(hs['gelir'])} (Alıcı: {hs['alici'] or '-'})", size=12, color=TEXT_MUTED)
+            )
 
         detay_satirlari.extend([
-            ft.Divider(height=6),
+            ft.Divider(height=6, color="#c0d8c3"),
             ft.Text(
                 f"Net Kâr / Zarar: {tl_fmt(ozet['net'])}",
                 weight=ft.FontWeight.BOLD,
-                size=15,
+                size=16,
                 color=PRIMARY_GREEN if ozet["net"] >= 0 else DANGER_RED,
             ),
         ])
 
         body_container.content = ft.ListView(
-            [
+            padding=14,
+            spacing=12,
+            expand=True,
+            controls=[
                 ft.Row(
                     [
-                        ft.IconButton(ft.Icons.ARROW_BACK, on_click=lambda e: navigate_to(0)),
-                        ft.Text(f"{t['ad']} - Düzenleme", size=18, weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
-                    ]
-                ),
-                section_panel("Tarla Bilgileri", [ad_tf, urun_tf, donum_tf, m2_txt]),
-                section_panel("Sabit / Doğrudan Tarla Giderleri", [tohum_tf, mazot_tf, su_tf, malzeme_tf, hasat_tf, diger_tf]),
-                ft.Container(content=ft.Column(detay_satirlari, spacing=3), bgcolor=SOFT_GREEN, padding=12, border_radius=8, border=ft.border.all(1, "#c0d8c3")),
-                ft.Row(
-                    [
-                        ft.ElevatedButton("💾 Tarla Bilgilerini Kaydet", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, expand=True, on_click=save_tarla),
-                        ft.OutlinedButton("Geri Dön", expand=True, on_click=lambda e: navigate_to(0)),
+                        ft.IconButton(
+                            ft.Icons.ARROW_BACK_IOS_NEW_ROUNDED,
+                            icon_color=PRIMARY_DARK,
+                            bgcolor=CARD_BG,
+                            on_click=lambda e: navigate_to(0),
+                        ),
+                        ft.Text(f"{t['ad']} Düzenle", size=18, weight=ft.FontWeight.BOLD, color=TEXT_DARK, expand=True),
                     ],
                     spacing=10,
                 ),
+                section_panel("Temel Bilgiler", [ad_tf, urun_tf, donum_tf, m2_txt], ft.Icons.INFO_OUTLINE),
+                section_panel("Sabit / Doğrudan Tarla Giderleri", [tohum_tf, mazot_tf, su_tf, malzeme_tf, hasat_tf, diger_tf], ft.Icons.PAYMENTS_OUTLINED),
+                ft.Container(
+                    content=ft.Column(detay_satirlari, spacing=5),
+                    bgcolor=SOFT_GREEN,
+                    padding=14,
+                    border_radius=14,
+                    border=ft.border.all(1, "#c0d8c3"),
+                ),
+                primary_btn("Değişiklikleri Kaydet", ft.Icons.SAVE_ROUNDED, save_tarla),
+                ft.OutlinedButton(
+                    "Listeye Geri Dön",
+                    height=44,
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10)),
+                    on_click=lambda e: navigate_to(0),
+                ),
             ],
-            spacing=10,
-            expand=True,
         )
         page.update()
 
-    # --- SAYFA 1: İLAÇ & GÜBRE DEPOSU ---
+    # --- SAYFA 1: İLAÇ & GÜBRE DEPOSU (SEKMELİ YAPIDA) ---
     def build_depo_sayfa():
         tarlalar = db.get_tarlalar()
         urunler = db.get_depo_urunler()
         kullanimlar = db.get_kullanimlar()
 
-        tur_dd = ft.Dropdown(label="Ürün Türü", value="Gübre", options=[ft.dropdown.Option("Gübre"), ft.dropdown.Option("İlaç")])
-        ad_tf = ft.TextField(label="Ürün Adı", hint_text="Örnek: DAP Gübre")
-        miktar_tf = ft.TextField(label="Alınan Miktar", hint_text="Örnek: 5000", keyboard_type=ft.KeyboardType.NUMBER)
-        birim_dd = ft.Dropdown(
-            label="Birim",
+        tur_dd = styled_dd("Ürün Türü", value="Gübre", options=[ft.dropdown.Option("Gübre"), ft.dropdown.Option("İlaç")])
+        ad_tf = styled_tf("Ürün Adı", hint_text="Örnek: DAP Gübre")
+        miktar_tf = styled_tf("Alınan Miktar", hint_text="Örnek: 5000", keyboard_type=ft.KeyboardType.NUMBER)
+        birim_dd = styled_dd(
+            "Birim",
             value="kg",
             options=[
                 ft.dropdown.Option("kg", "Kilogram"),
@@ -296,8 +554,8 @@ def main(page: ft.Page):
                 ft.dropdown.Option("gram", "Gram"),
             ],
         )
-        fiyat_tf = ft.TextField(label="Toplam Alış Fiyatı (TL)", hint_text="Örnek: 100000", keyboard_type=ft.KeyboardType.NUMBER)
-        tarih_tf = ft.TextField(label="Alış Tarihi", value=str(date.today()))
+        fiyat_tf = styled_tf("Toplam Alış Fiyatı (₺)", hint_text="Örnek: 100000", keyboard_type=ft.KeyboardType.NUMBER)
+        tarih_tf = styled_tf("Alış Tarihi", value=str(date.today()))
 
         def alis_kaydet(e):
             m = parse_num(miktar_tf.value)
@@ -312,14 +570,14 @@ def main(page: ft.Page):
             show_snack("Ürün depoya kaydedildi.")
             navigate_to(1)
 
-        k_tarla_dd = ft.Dropdown(label="Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
-        k_urun_dd = ft.Dropdown(
-            label="Depodan Ürün Seç",
-            options=[ft.dropdown.Option(str(u["id"]), f"{u['ad']} - {num_fmt(u['kalan'])} {u['temel_birim']}") for u in urunler],
+        k_tarla_dd = styled_dd("Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
+        k_urun_dd = styled_dd(
+            "Depodan Ürün Seç",
+            options=[ft.dropdown.Option(str(u["id"]), f"{u['ad']} ({num_fmt(u['kalan'])} {u['temel_birim']})") for u in urunler],
         )
-        k_miktar_tf = ft.TextField(label="Kullanılan Miktar", hint_text="Örnek: 200", keyboard_type=ft.KeyboardType.NUMBER)
-        k_birim_dd = ft.Dropdown(
-            label="Çıkış Ölçü Birimi",
+        k_miktar_tf = styled_tf("Kullanılan Miktar", hint_text="Örnek: 200", keyboard_type=ft.KeyboardType.NUMBER)
+        k_birim_dd = styled_dd(
+            "Çıkış Ölçü Birimi",
             value="kg",
             options=[
                 ft.dropdown.Option("kg", "Kilogram"),
@@ -329,7 +587,7 @@ def main(page: ft.Page):
                 ft.dropdown.Option("gram", "Gram"),
             ],
         )
-        k_tarih_tf = ft.TextField(label="Kullanım Tarihi", value=str(date.today()))
+        k_tarih_tf = styled_tf("Kullanım Tarihi", value=str(date.today()))
 
         def urun_kullan_click(e):
             if not k_tarla_dd.value or not k_urun_dd.value:
@@ -356,18 +614,19 @@ def main(page: ft.Page):
                     [
                         ft.Column(
                             [
-                                ft.Text(f"{u['ad']} ({u['tur']})", weight=ft.FontWeight.BOLD),
-                                ft.Text(f"Alınan: {num_fmt(u['miktar'])} {u['temel_birim']} | Kullanılan: {num_fmt(u['kullanilan'])} {u['temel_birim']} | Kalan: {num_fmt(u['kalan'])} {u['temel_birim']}", size=12, color=TEXT_MUTED),
-                                ft.Text(f"Birim Fiyat: {tl_fmt(u['birim_fiyat'])} | Stok Değeri: {tl_fmt(u['stok_degeri'])}", size=12, color=PRIMARY_GREEN),
+                                ft.Text(f"{u['ad']} ({u['tur']})", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                                ft.Text(f"Kalan: {num_fmt(u['kalan'])} / {num_fmt(u['miktar'])} {u['temel_birim']}", size=12, color=TEXT_MUTED),
+                                ft.Text(f"Birim: {tl_fmt(u['birim_fiyat'])} | Stok Değeri: {tl_fmt(u['stok_degeri'])}", size=12, color=PRIMARY_GREEN, weight=ft.FontWeight.W_600),
                             ],
+                            spacing=3,
                             expand=True,
                         ),
                         ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_RED, on_click=lambda e, uid=u["id"]: try_delete_urun(uid)),
                     ]
                 ),
-                padding=10,
+                padding=12,
                 bgcolor=SOFT_GREEN,
-                border_radius=8,
+                border_radius=10,
             )
             for u in urunler
         ]
@@ -378,34 +637,63 @@ def main(page: ft.Page):
                     [
                         ft.Column(
                             [
-                                ft.Text(f"{k['tarla_ad']} → {k['urun_ad'] or '-'}", weight=ft.FontWeight.BOLD),
-                                ft.Text(f"{num_fmt(k['miktar'])} {k['temel_birim'] or ''} | Maliyet: {tl_fmt(k['maliyet'])} | {k['tarih'] or '-'}", size=12, color=TEXT_MUTED),
+                                ft.Text(f"{k['tarla_ad']} → {k['urun_ad'] or '-'}", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                                ft.Text(f"{num_fmt(k['miktar'])} {k['temel_birim'] or ''} | {tl_fmt(k['maliyet'])} | {k['tarih'] or '-'}", size=12, color=TEXT_MUTED),
                             ],
+                            spacing=3,
                             expand=True,
                         ),
-                        ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_RED, on_click=lambda e, kid=k["id"]: (db.delete_kullanim(kid), show_snack("Kullanım kaydı silindi, stok geri eklendi."), navigate_to(1))),
+                        ft.IconButton(
+                            ft.Icons.DELETE_OUTLINE,
+                            icon_color=DANGER_RED,
+                            on_click=lambda e, kid=k["id"]: (db.delete_kullanim(kid), show_snack("Kullanım kaydı silindi, stok geri eklendi."), navigate_to(1)),
+                        ),
                     ]
                 ),
-                padding=10,
+                padding=12,
                 bgcolor="#f9fbf9",
-                border=ft.border.all(1, "#dce6dc"),
-                border_radius=8,
+                border=ft.border.all(1, BORDER_COLOR),
+                border_radius=10,
             )
             for k in kullanimlar
         ]
 
-        return ft.ListView(
-            [
-                section_panel("Yeni Ürün Alışı (İlaç / Gübre)", [tur_dd, ad_tf, miktar_tf, birim_dd, fiyat_tf, tarih_tf, ft.ElevatedButton("+ Ürünü Depoya Ekle", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=alis_kaydet)]),
-                section_panel("📋 Depodaki Ürünler", stok_kartlari or [ft.Text("Henüz depo ürünü yok.", color=TEXT_MUTED)]),
-                section_panel("🌱 Ürünü Tarlada Kullan", [k_tarla_dd, k_urun_dd, k_miktar_tf, k_birim_dd, k_tarih_tf, ft.ElevatedButton("Tarlaya Ürün Kullan", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=urun_kullan_click)]),
-                section_panel("📊 Tarlalara Gönderilen Ürünler", kullanim_kartlari or [ft.Text("Henüz kullanım kaydı yok.", color=TEXT_MUTED)]),
-            ],
-            spacing=8,
+        return ft.Tabs(
+            selected_index=0,
+            animation_duration=200,
+            indicator_color=PRIMARY_GREEN,
+            label_color=PRIMARY_GREEN,
+            unselected_label_color=TEXT_MUTED,
             expand=True,
+            tabs=[
+                ft.Tab(
+                    text="Tarlada Kullan",
+                    icon=ft.Icons.AGRICULTURE_OUTLINED,
+                    content=ft.ListView(
+                        padding=14,
+                        spacing=12,
+                        controls=[
+                            section_panel("Ürünü Tarlada Kullan", [k_tarla_dd, k_urun_dd, k_miktar_tf, k_birim_dd, k_tarih_tf, primary_btn("Tarlaya Çıkış Yap", ft.Icons.CHECK_ROUNDED, urun_kullan_click)]),
+                            section_panel("Son Kullanımlar", kullanim_kartlari or [ft.Text("Henüz kullanım kaydı yok.", color=TEXT_MUTED)]),
+                        ],
+                    ),
+                ),
+                ft.Tab(
+                    text="Depo & Alış",
+                    icon=ft.Icons.INVENTORY_2_OUTLINED,
+                    content=ft.ListView(
+                        padding=14,
+                        spacing=12,
+                        controls=[
+                            section_panel("Yeni Ürün Alışı", [tur_dd, ad_tf, miktar_tf, birim_dd, fiyat_tf, tarih_tf, primary_btn("Depoya Ekle", ft.Icons.ADD_ROUNDED, alis_kaydet)]),
+                            section_panel("Mevcut Stoklar", stok_kartlari or [ft.Text("Henüz depo ürünü yok.", color=TEXT_MUTED)]),
+                        ],
+                    ),
+                ),
+            ],
         )
 
-    # --- SAYFA 2: MAZOT DEPOSU ---
+    # --- SAYFA 2: MAZOT DEPOSU (SEKMELİ YAPIDA) ---
     def build_mazot_sayfa():
         tarlalar = db.get_tarlalar()
         alislar = db.get_mazot_alislar()
@@ -416,9 +704,9 @@ def main(page: ft.Page):
         kalan_l = toplam_l - kull_l
         stok_val = sum(a["stok_degeri"] for a in alislar)
 
-        m_miktar = ft.TextField(label="Alınan Mazot (Litre)", keyboard_type=ft.KeyboardType.NUMBER)
-        m_fiyat = ft.TextField(label="Toplam Alış Fiyatı (TL)", keyboard_type=ft.KeyboardType.NUMBER)
-        m_tarih = ft.TextField(label="Alış Tarihi", value=str(date.today()))
+        m_miktar = styled_tf("Alınan Mazot (Litre)", keyboard_type=ft.KeyboardType.NUMBER)
+        m_fiyat = styled_tf("Toplam Alış Fiyatı (₺)", keyboard_type=ft.KeyboardType.NUMBER)
+        m_tarih = styled_tf("Alış Tarihi", value=str(date.today()))
 
         def mazot_alis_ekle(e):
             mk = parse_num(m_miktar.value)
@@ -430,17 +718,17 @@ def main(page: ft.Page):
             show_snack("Mazot depoya eklendi.")
             navigate_to(2)
 
-        c_tarla = ft.Dropdown(label="Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
-        c_alis = ft.Dropdown(
-            label="Mazot Alış Kaydı Seç",
+        c_tarla = styled_dd("Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
+        c_alis = styled_dd(
+            "Mazot Alış Kaydı Seç",
             options=[
-                ft.dropdown.Option(str(a["id"]), f"{a['tarih'] or '-'} | {num_fmt(a['kalan'])} L - {tl_fmt(a['birim_fiyat'])}/L")
+                ft.dropdown.Option(str(a["id"]), f"{a['tarih'] or '-'} | {num_fmt(a['kalan'])} L ({tl_fmt(a['birim_fiyat'])}/L)")
                 for a in alislar
                 if a["kalan"] > 0
             ],
         )
-        c_miktar = ft.TextField(label="Çıkış Miktarı (Litre)", keyboard_type=ft.KeyboardType.NUMBER)
-        c_tarih = ft.TextField(label="Çıkış Tarihi", value=str(date.today()))
+        c_miktar = styled_tf("Çıkış Miktarı (Litre)", keyboard_type=ft.KeyboardType.NUMBER)
+        c_tarih = styled_tf("Çıkış Tarihi", value=str(date.today()))
 
         def mazot_cikis_ekle(e):
             if not c_tarla.value or not c_alis.value:
@@ -467,18 +755,19 @@ def main(page: ft.Page):
                     [
                         ft.Column(
                             [
-                                ft.Text(f"Alış ({a['tarih'] or '-'}) — Alınan: {num_fmt(a['miktar'])} L", weight=ft.FontWeight.BOLD),
-                                ft.Text(f"Kalan: {num_fmt(a['kalan'])} L | Birim: {tl_fmt(a['birim_fiyat'])}/L | Stok Değeri: {tl_fmt(a['stok_degeri'])}", size=12, color=TEXT_MUTED),
+                                ft.Text(f"Alış ({a['tarih'] or '-'}) — {num_fmt(a['miktar'])} L", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                                ft.Text(f"Kalan: {num_fmt(a['kalan'])} L | {tl_fmt(a['birim_fiyat'])}/L | Değer: {tl_fmt(a['stok_degeri'])}", size=12, color=TEXT_MUTED),
                             ],
+                            spacing=3,
                             expand=True,
                         ),
                         ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_RED, on_click=lambda e, aid=a["id"]: try_delete_alis(aid)),
                     ]
                 ),
-                padding=10,
+                padding=12,
                 bgcolor="#f9fbf9",
-                border=ft.border.all(1, "#dce6dc"),
-                border_radius=8,
+                border=ft.border.all(1, BORDER_COLOR),
+                border_radius=10,
             )
             for a in alislar
         ]
@@ -489,35 +778,74 @@ def main(page: ft.Page):
                     [
                         ft.Column(
                             [
-                                ft.Text(f"{c['tarla_ad'] or '-'} — {num_fmt(c['miktar'])} L", weight=ft.FontWeight.BOLD),
-                                ft.Text(f"Litre Fiyatı: {tl_fmt(c['birim_fiyat'])} | Maliyet: {tl_fmt(c['maliyet'])} | {c['tarih'] or '-'}", size=12, color=TEXT_MUTED),
+                                ft.Text(f"{c['tarla_ad'] or '-'} — {num_fmt(c['miktar'])} L", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                                ft.Text(f"Maliyet: {tl_fmt(c['maliyet'])} ({tl_fmt(c['birim_fiyat'])}/L) | {c['tarih'] or '-'}", size=12, color=TEXT_MUTED),
                             ],
+                            spacing=3,
                             expand=True,
                         ),
-                        ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_RED, on_click=lambda e, cid=c["id"]: (db.delete_mazot_cikis(cid), show_snack("Mazot çıkışı silindi, stok geri eklendi."), navigate_to(2))),
+                        ft.IconButton(
+                            ft.Icons.DELETE_OUTLINE,
+                            icon_color=DANGER_RED,
+                            on_click=lambda e, cid=c["id"]: (db.delete_mazot_cikis(cid), show_snack("Mazot çıkışı silindi, stok geri eklendi."), navigate_to(2)),
+                        ),
                     ]
                 ),
-                padding=10,
+                padding=12,
                 bgcolor=SOFT_GREEN,
-                border_radius=8,
+                border_radius=10,
             )
             for c in cikislar
         ]
 
-        return ft.ListView(
-            [
-                ft.Row([stat_card("Toplam Alınan", f"{num_fmt(toplam_l)} L"), stat_card("Toplam Kullanılan", f"{num_fmt(kull_l)} L")], spacing=10),
-                ft.Row([stat_card("Kalan Mazot", f"{num_fmt(kalan_l)} L"), stat_card("Stok Değeri", tl_fmt(stok_val))], spacing=10),
-                section_panel("Yeni Mazot Alışı", [m_miktar, m_fiyat, m_tarih, ft.ElevatedButton("+ Mazot Depoya Ekle", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=mazot_alis_ekle)]),
-                section_panel("📋 Mazot Alış Kayıtları", alis_kartlari or [ft.Text("Henüz mazot alışı yok.", color=TEXT_MUTED)]),
-                section_panel("🌱 Tarlaya Mazot Çıkışı", [c_tarla, c_alis, c_miktar, c_tarih, ft.ElevatedButton("Mazotu Tarlaya Gönder", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=mazot_cikis_ekle)]),
-                section_panel("📋 Mazot Çıkış Geçmişi", cikis_kartlari or [ft.Text("Henüz mazot çıkışı yok.", color=TEXT_MUTED)]),
+        ozet_row = ft.ResponsiveRow(
+            spacing=10,
+            run_spacing=10,
+            controls=[
+                stat_card("Kalan Mazot", f"{num_fmt(kalan_l)} L", ft.Icons.LOCAL_GAS_STATION_ROUNDED, PRIMARY_GREEN),
+                stat_card("Stok Değeri", tl_fmt(stok_val), ft.Icons.PAYMENTS_ROUNDED),
+                stat_card("Toplam Alınan", f"{num_fmt(toplam_l)} L", ft.Icons.ADD_CIRCLE_OUTLINE),
+                stat_card("Kullanılan", f"{num_fmt(kull_l)} L", ft.Icons.REMOVE_CIRCLE_OUTLINE, DANGER_RED),
             ],
-            spacing=8,
-            expand=True,
         )
 
-    # --- SAYFA 3: TARLA GİDER GİRİŞİ, HASAT VE ORTAK GİDERLER ---
+        return ft.Tabs(
+            selected_index=0,
+            animation_duration=200,
+            indicator_color=PRIMARY_GREEN,
+            label_color=PRIMARY_GREEN,
+            unselected_label_color=TEXT_MUTED,
+            expand=True,
+            tabs=[
+                ft.Tab(
+                    text="Mazot Çıkışı",
+                    icon=ft.Icons.LOCAL_GAS_STATION_OUTLINED,
+                    content=ft.ListView(
+                        padding=14,
+                        spacing=12,
+                        controls=[
+                            ozet_row,
+                            section_panel("Tarlaya Mazot Gönder", [c_tarla, c_alis, c_miktar, c_tarih, primary_btn("Mazotu Gönder", ft.Icons.SEND_ROUNDED, mazot_cikis_ekle)]),
+                            section_panel("Son Mazot Çıkışları", cikis_kartlari or [ft.Text("Henüz mazot çıkışı yok.", color=TEXT_MUTED)]),
+                        ],
+                    ),
+                ),
+                ft.Tab(
+                    text="Mazot Alışı",
+                    icon=ft.Icons.ADD_SHOPPING_CART_OUTLINED,
+                    content=ft.ListView(
+                        padding=14,
+                        spacing=12,
+                        controls=[
+                            section_panel("Yeni Mazot Alışı", [m_miktar, m_fiyat, m_tarih, primary_btn("Mazot Depoya Ekle", ft.Icons.ADD_ROUNDED, mazot_alis_ekle)]),
+                            section_panel("Alış Kayıtları", alis_kartlari or [ft.Text("Henüz mazot alışı yok.", color=TEXT_MUTED)]),
+                        ],
+                    ),
+                ),
+            ],
+        )
+
+    # --- SAYFA 3: TARLA GİDERİ, HASAT VE ORTAK GİDERLER (SEKMELİ YAPIDA) ---
     def build_islemler_sayfa():
         tarlalar = db.get_tarlalar()
         ek_giderler = db.get_ek_giderler()
@@ -525,12 +853,11 @@ def main(page: ft.Page):
         ortaklar = db.get_ortak_giderler()
         rapor = db.get_genel_rapor()
 
-        # Tarla Ek Gider
-        eg_tarla = ft.Dropdown(label="Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
-        eg_tur = ft.Dropdown(label="Gider Türü", value="Su", options=[ft.dropdown.Option(x) for x in ["Su", "Elektrik", "İşçilik", "Tamir", "Nakliye", "Diğer"]])
-        eg_aciklama = ft.TextField(label="Açıklama (İsteğe Bağlı)", hint_text="Örnek: Sulama motoru arızası")
-        eg_tutar = ft.TextField(label="Gider Tutarı (TL)", keyboard_type=ft.KeyboardType.NUMBER)
-        eg_tarih = ft.TextField(label="Gider Tarihi", value=str(date.today()))
+        eg_tarla = styled_dd("Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
+        eg_tur = styled_dd("Gider Türü", value="Su", options=[ft.dropdown.Option(x) for x in ["Su", "Elektrik", "İşçilik", "Tamir", "Nakliye", "Diğer"]])
+        eg_aciklama = styled_tf("Açıklama (İsteğe Bağlı)", hint_text="Örnek: Sulama motoru arızası")
+        eg_tutar = styled_tf("Gider Tutarı (₺)", keyboard_type=ft.KeyboardType.NUMBER)
+        eg_tarih = styled_tf("Gider Tarihi", value=str(date.today()))
 
         def eg_kaydet(e):
             if not eg_tarla.value:
@@ -544,13 +871,12 @@ def main(page: ft.Page):
             show_snack("Tarla gideri kaydedildi.")
             navigate_to(3)
 
-        # Hasat & Satış
-        h_tarla = ft.Dropdown(label="Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
-        h_urun = ft.TextField(label="Hasat Edilen Ürün", hint_text="Buğday, arpa, mısır")
-        h_miktar = ft.TextField(label="Hasat Miktarı (Ton)", keyboard_type=ft.KeyboardType.NUMBER)
-        h_fiyat = ft.TextField(label="Satış Fiyatı (Ton Başına TL)", keyboard_type=ft.KeyboardType.NUMBER)
-        h_tarih = ft.TextField(label="Hasat Tarihi", value=str(date.today()))
-        h_alici = ft.TextField(label="Alıcı / Firma", hint_text="Alıcı adı")
+        h_tarla = styled_dd("Tarla Seç", options=[ft.dropdown.Option(str(t["id"]), t["ad"]) for t in tarlalar])
+        h_urun = styled_tf("Hasat Edilen Ürün", hint_text="Buğday, arpa, mısır")
+        h_miktar = styled_tf("Hasat Miktarı (Ton)", keyboard_type=ft.KeyboardType.NUMBER)
+        h_fiyat = styled_tf("Satış Fiyatı (Ton Başına ₺)", keyboard_type=ft.KeyboardType.NUMBER)
+        h_tarih = styled_tf("Hasat Tarihi", value=str(date.today()))
+        h_alici = styled_tf("Alıcı / Firma", hint_text="Alıcı adı")
 
         def h_kaydet(e):
             if not h_tarla.value or not h_urun.value.strip():
@@ -565,13 +891,12 @@ def main(page: ft.Page):
             show_snack("Hasat ve satış kaydı oluşturuldu.")
             navigate_to(3)
 
-        # Ortak Gider
-        o_aciklama = ft.TextField(label="Gider Açıklaması", hint_text="Örnek: Traktör tamiri")
-        o_kat = ft.Dropdown(label="Gider Kategorisi", value="Mazot", options=[ft.dropdown.Option(x) for x in ["Mazot", "İşçilik", "Makine", "Nakliye", "Bakım", "Elektrik", "Diğer"]])
-        o_tutar = ft.TextField(label="Gider Tutarı (TL)", keyboard_type=ft.KeyboardType.NUMBER)
-        o_tarih = ft.TextField(label="Gider Tarihi", value=str(date.today()))
-        o_paylasim = ft.Dropdown(
-            label="Gideri Paylaştırma Şekli",
+        o_aciklama = styled_tf("Gider Açıklaması", hint_text="Örnek: Traktör tamiri")
+        o_kat = styled_dd("Gider Kategorisi", value="Mazot", options=[ft.dropdown.Option(x) for x in ["Mazot", "İşçilik", "Makine", "Nakliye", "Bakım", "Elektrik", "Diğer"]])
+        o_tutar = styled_tf("Gider Tutarı (₺)", keyboard_type=ft.KeyboardType.NUMBER)
+        o_tarih = styled_tf("Gider Tarihi", value=str(date.today()))
+        o_paylasim = styled_dd(
+            "Paylaştırma Şekli",
             value="donum",
             options=[ft.dropdown.Option("donum", "Dönüme Göre"), ft.dropdown.Option("esit", "Tarlalara Eşit")],
         )
@@ -592,13 +917,20 @@ def main(page: ft.Page):
             ft.Container(
                 content=ft.Row(
                     [
-                        ft.Column([ft.Text(f"{g['tarla_ad'] or '-'} — {g['tur']} ({tl_fmt(g['tutar'])})", weight=ft.FontWeight.BOLD), ft.Text(f"{g['aciklama'] or '-'} | {g['tarih'] or '-'}", size=12, color=TEXT_MUTED)], expand=True),
+                        ft.Column(
+                            [
+                                ft.Text(f"{g['tarla_ad'] or '-'} — {g['tur']} ({tl_fmt(g['tutar'])})", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                                ft.Text(f"{g['aciklama'] or '-'} | {g['tarih'] or '-'}", size=12, color=TEXT_MUTED),
+                            ],
+                            spacing=3,
+                            expand=True,
+                        ),
                         ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_RED, on_click=lambda e, gid=g["id"]: (db.delete_ek_gider(gid), show_snack("Tarla gideri silindi."), navigate_to(3))),
                     ]
                 ),
-                padding=8,
-                bgcolor="#fff8f8",
-                border_radius=8,
+                padding=12,
+                bgcolor=SOFT_RED,
+                border_radius=10,
             )
             for g in ek_giderler
         ]
@@ -607,13 +939,20 @@ def main(page: ft.Page):
             ft.Container(
                 content=ft.Row(
                     [
-                        ft.Column([ft.Text(f"{h['tarla_ad'] or '-'} — {h['urun']} ({num_fmt(h['miktar'])} Ton)", weight=ft.FontWeight.BOLD), ft.Text(f"Birim: {tl_fmt(h['fiyat'])} | Gelir: {tl_fmt(h['gelir'])} | Alıcı: {h['alici'] or '-'} | {h['tarih'] or '-'}", size=12, color=PRIMARY_GREEN)], expand=True),
+                        ft.Column(
+                            [
+                                ft.Text(f"{h['tarla_ad'] or '-'} — {h['urun']} ({num_fmt(h['miktar'])} Ton)", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                                ft.Text(f"Gelir: {tl_fmt(h['gelir'])} ({tl_fmt(h['fiyat'])}/Ton) | {h['alici'] or '-'}", size=12, color=PRIMARY_GREEN, weight=ft.FontWeight.W_600),
+                            ],
+                            spacing=3,
+                            expand=True,
+                        ),
                         ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_RED, on_click=lambda e, hid=h["id"]: (db.delete_hasat(hid), show_snack("Hasat kaydı silindi."), navigate_to(3))),
                     ]
                 ),
-                padding=8,
+                padding=12,
                 bgcolor=SOFT_GREEN,
-                border_radius=8,
+                border_radius=10,
             )
             for h in hasatlar
         ]
@@ -622,35 +961,78 @@ def main(page: ft.Page):
             ft.Container(
                 content=ft.Row(
                     [
-                        ft.Column([ft.Text(f"{o['aciklama']} ({o['kategori']}) — {tl_fmt(o['tutar'])}", weight=ft.FontWeight.BOLD), ft.Text(f"Paylaşım: {'Dönüme Göre' if o['paylasim']=='donum' else 'Eşit'} | {o['tarih'] or '-'}", size=12, color=TEXT_MUTED)], expand=True),
+                        ft.Column(
+                            [
+                                ft.Text(f"{o['aciklama']} ({o['kategori']}) — {tl_fmt(o['tutar'])}", weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                                ft.Text(f"Paylaşım: {'Dönüme Göre' if o['paylasim']=='donum' else 'Eşit'} | {o['tarih'] or '-'}", size=12, color=TEXT_MUTED),
+                            ],
+                            spacing=3,
+                            expand=True,
+                        ),
                         ft.IconButton(ft.Icons.DELETE_OUTLINE, icon_color=DANGER_RED, on_click=lambda e, oid=o["id"]: (db.delete_ortak_gider(oid), show_snack("Ortak gider silindi."), navigate_to(3))),
                     ]
                 ),
-                padding=8,
+                padding=12,
                 bgcolor="#f9fbf9",
-                border=ft.border.all(1, "#dce6dc"),
-                border_radius=8,
+                border=ft.border.all(1, BORDER_COLOR),
+                border_radius=10,
             )
             for o in ortaklar
         ]
 
         dagitim_ui = [
-            ft.Text(f"• {oz['tarla']['ad']}: {tl_fmt(oz['ortak_pay'])}", size=13)
+            ft.Row(
+                [
+                    ft.Text(oz["tarla"]["ad"], size=13, color=TEXT_DARK, expand=True),
+                    ft.Text(tl_fmt(oz["ortak_pay"]), size=13, weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
+                ]
+            )
             for oz in rapor["tarla_ozetleri"]
         ]
 
-        return ft.ListView(
-            [
-                section_panel("🧾 Yeni Tarla Gideri Ekle", [eg_tarla, eg_tur, eg_aciklama, eg_tutar, eg_tarih, ft.ElevatedButton("💾 Gideri Kaydet", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=eg_kaydet)]),
-                section_panel("📋 Eklenen Tarla Giderleri", ek_list_ui or [ft.Text("Henüz ek tarla gideri yok.", color=TEXT_MUTED)]),
-                section_panel("🚜 Yeni Hasat ve Satış Kaydı", [h_tarla, h_urun, h_miktar, h_fiyat, h_tarih, h_alici, ft.ElevatedButton("Hasat ve Satışı Kaydet", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=h_kaydet)]),
-                section_panel("📋 Hasat ve Satış Geçmişi", hasat_list_ui or [ft.Text("Henüz hasat kaydı yok.", color=TEXT_MUTED)]),
-                section_panel("💰 Yeni Ortak Gider Ekle", [o_aciklama, o_kat, o_tutar, o_tarih, o_paylasim, ft.ElevatedButton("+ Ortak Gider Kaydet", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=o_kaydet)]),
-                section_panel("📋 Ortak Gider Listesi", ortak_list_ui or [ft.Text("Henüz ortak gider yok.", color=TEXT_MUTED)]),
-                section_panel("🌱 Tarlalara Dağıtılan Ortak Giderler", dagitim_ui),
-            ],
-            spacing=8,
+        return ft.Tabs(
+            selected_index=0,
+            animation_duration=200,
+            indicator_color=PRIMARY_GREEN,
+            label_color=PRIMARY_GREEN,
+            unselected_label_color=TEXT_MUTED,
             expand=True,
+            tabs=[
+                ft.Tab(
+                    text="Tarla Gideri",
+                    content=ft.ListView(
+                        padding=14,
+                        spacing=12,
+                        controls=[
+                            section_panel("Yeni Tarla Gideri", [eg_tarla, eg_tur, eg_aciklama, eg_tutar, eg_tarih, primary_btn("Gideri Kaydet", ft.Icons.SAVE_ROUNDED, eg_kaydet)]),
+                            section_panel("Kayıtlı Tarla Giderleri", ek_list_ui or [ft.Text("Henüz ek tarla gideri yok.", color=TEXT_MUTED)]),
+                        ],
+                    ),
+                ),
+                ft.Tab(
+                    text="Hasat & Satış",
+                    content=ft.ListView(
+                        padding=14,
+                        spacing=12,
+                        controls=[
+                            section_panel("Yeni Hasat / Satış", [h_tarla, h_urun, h_miktar, h_fiyat, h_tarih, h_alici, primary_btn("Hasat ve Satışı Kaydet", ft.Icons.CHECK_ROUNDED, h_kaydet)]),
+                            section_panel("Hasat Geçmişi", hasat_list_ui or [ft.Text("Henüz hasat kaydı yok.", color=TEXT_MUTED)]),
+                        ],
+                    ),
+                ),
+                ft.Tab(
+                    text="Ortak Gider",
+                    content=ft.ListView(
+                        padding=14,
+                        spacing=12,
+                        controls=[
+                            section_panel("Yeni Ortak Gider", [o_aciklama, o_kat, o_tutar, o_tarih, o_paylasim, primary_btn("Ortak Gider Kaydet", ft.Icons.ADD_ROUNDED, o_kaydet)]),
+                            section_panel("Ortak Gider Listesi", ortak_list_ui or [ft.Text("Henüz ortak gider yok.", color=TEXT_MUTED)]),
+                            section_panel("Tarlalara Dağıtım", dagitim_ui),
+                        ],
+                    ),
+                ),
+            ],
         )
 
     # --- SAYFA 4: GENEL RAPOR & YEDEKLEME ---
@@ -669,50 +1051,53 @@ def main(page: ft.Page):
                         [
                             ft.Row(
                                 [
-                                    ft.Text(f"{t['ad']} ({t['urun'] or '-'})", weight=ft.FontWeight.BOLD),
+                                    ft.Text(f"{t['ad']} ({t['urun'] or '-'})", weight=ft.FontWeight.BOLD, color=TEXT_DARK, expand=True),
                                     ft.Text(f"{num_fmt(t['donum'])} Dönüm", size=12, color=TEXT_MUTED),
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             ),
                             ft.Text(
-                                f"Tarla+Ek: {tl_fmt(o['temel']+o['ek_gider'])} | İlaç-Gübre: {tl_fmt(o['ilac_gubre'])} | Mazot: {tl_fmt(o['mazot_depo'])} | Ortak: {tl_fmt(o['ortak_pay'])}",
+                                f"Sabit+Ek: {tl_fmt(o['temel']+o['ek_gider'])} • İlaç/Gübre: {tl_fmt(o['ilac_gubre'])} • Mazot: {tl_fmt(o['mazot_depo'])} • Ortak: {tl_fmt(o['ortak_pay'])}",
                                 size=11,
                                 color=TEXT_MUTED,
                             ),
+                            ft.Divider(height=1, color="#c8decb"),
                             ft.Row(
                                 [
-                                    ft.Text(f"Gider: {tl_fmt(o['toplam_gider'])}", size=12),
+                                    ft.Text(f"Gider: {tl_fmt(o['toplam_gider'])}", size=12, color=DANGER_RED),
                                     ft.Text(f"Gelir: {tl_fmt(o['gelir'])}", size=12, color=PRIMARY_GREEN),
                                     ft.Text(f"Net: {tl_fmt(o['net'])}", size=13, weight=ft.FontWeight.BOLD, color=net_c),
                                 ],
                                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                             ),
                         ],
-                        spacing=4,
+                        spacing=6,
                     ),
-                    padding=10,
+                    padding=12,
                     bgcolor=SOFT_GREEN,
-                    border_radius=8,
+                    border_radius=10,
                 )
             )
 
         depo_durum_ui = [
-            ft.Text(f"• {u['ad']} ({u['tur']}): Kalan {num_fmt(u['kalan'])} {u['temel_birim']} | Değer: {tl_fmt(u['stok_degeri'])}", size=12)
+            ft.Text(f"• {u['ad']} ({u['tur']}): Kalan {num_fmt(u['kalan'])} {u['temel_birim']} ({tl_fmt(u['stok_degeri'])})", size=12)
             for u in urunler
         ]
         if mazot_alislar:
             m_kalan = sum(a["kalan"] for a in mazot_alislar)
             m_deger = sum(a["stok_degeri"] for a in mazot_alislar)
-            depo_durum_ui.append(ft.Text(f"• Mazot (Toplam Stok): Kalan {num_fmt(m_kalan)} L | Değer: {tl_fmt(m_deger)}", size=12, weight=ft.FontWeight.BOLD))
+            depo_durum_ui.append(
+                ft.Text(f"• Mazot (Toplam): Kalan {num_fmt(m_kalan)} L ({tl_fmt(m_deger)})", size=12, weight=ft.FontWeight.BOLD)
+            )
 
-        json_yedek_tf = ft.TextField(label="Yedek JSON Metni (Kopyala veya Yapıştır)", multiline=True, min_lines=3, max_lines=6)
+        json_yedek_tf = styled_tf("Yedek JSON Metni", multiline=True, min_lines=3, max_lines=5)
 
         def yedek_disa_aktar(e):
             json_yedek_tf.value = db.export_json()
             backup_path = os.path.join(app_data_dir, f"tarla-takip-yedek-{date.today()}.json")
             with open(backup_path, "w", encoding="utf-8") as f:
                 f.write(json_yedek_tf.value)
-            show_snack(f"Yedek oluşturuldu ve kaydedildi: {backup_path}")
+            show_snack(f"Yedek kaydedildi: {os.path.basename(backup_path)}")
             page.update()
 
         def yedek_ice_aktar(e):
@@ -728,45 +1113,73 @@ def main(page: ft.Page):
             csv_path = os.path.join(app_data_dir, f"tarla-genel-rapor-{date.today()}.csv")
             with open(csv_path, "w", encoding="utf-8") as f:
                 f.write(db.export_csv())
-            show_snack(f"CSV raporu kaydedildi: {csv_path}")
+            show_snack(f"CSV raporu kaydedildi: {os.path.basename(csv_path)}")
 
-        def tumunu_sil(e):
-            db.reset_all()
-            show_snack("Bütün kayıtlar silindi ve 10 boş tarla oluşturuldu.")
-            navigate_to(4)
+        def confirm_reset_dialog(e):
+            def close_dlg(ev):
+                dlg.open = False
+                page.update()
+
+            def do_reset(ev):
+                dlg.open = False
+                db.reset_all()
+                show_snack("Bütün kayıtlar sıfırlandı ve 10 boş tarla oluşturuldu.")
+                navigate_to(4)
+
+            dlg = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Tüm Verileri Sil?", weight=ft.FontWeight.BOLD),
+                content=ft.Text("Tüm tarla, depo, mazot ve hasat kayıtları kalıcı olarak silinecek. Emin misiniz?"),
+                actions=[
+                    ft.TextButton("İptal", on_click=close_dlg),
+                    ft.ElevatedButton("Evet, Sil", bgcolor=DANGER_RED, color=ft.Colors.WHITE, on_click=do_reset),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.dialog = dlg
+            dlg.open = True
+            page.update()
 
         return ft.ListView(
-            [
-                ft.Text("📊 Genel Tarım İşletmesi Raporu", size=18, weight=ft.FontWeight.BOLD, color=PRIMARY_DARK),
-                ft.Row([stat_card("Toplam Gelir", tl_fmt(r["toplam_gelir"]), PRIMARY_GREEN), stat_card("Sabit & Ek Tarla Gideri", tl_fmt(r["tarla_sabit_ek"]))], spacing=10),
-                ft.Row([stat_card("Depo Giderleri", tl_fmt(r["depo_toplam"])), stat_card("Ortak Giderler", tl_fmt(r["ortak_gider"]))], spacing=10),
-                ft.Row([stat_card("Toplam Gider", tl_fmt(r["toplam_gider"]), DANGER_RED), stat_card("Net Kâr / Zarar", tl_fmt(r["net_kar"]), PRIMARY_GREEN if r["net_kar"] >= 0 else DANGER_RED)], spacing=10),
-                ft.Row([stat_card("Toplam Hasat", f"{num_fmt(r['toplam_hasat'])} Ton"), stat_card("Tarla Sayısı", str(r["tarla_sayisi"]))], spacing=10),
-                section_panel(
-                    "💰 Gider Dağılımı",
-                    [
-                        ft.Text(f"• Sabit ve Ek Tarla Giderleri: {tl_fmt(r['tarla_sabit_ek'])}"),
-                        ft.Text(f"• İlaç ve Gübre (Depo Kullanımı): {tl_fmt(r['ilac_gubre'])}"),
-                        ft.Text(f"• Mazot (Depo Çıkışı): {tl_fmt(r['mazot_depo'])}"),
-                        ft.Text(f"• Ortak Giderler: {tl_fmt(r['ortak_gider'])}"),
+            padding=14,
+            spacing=12,
+            expand=True,
+            controls=[
+                ft.Text("Genel İşletme Raporu", size=17, weight=ft.FontWeight.BOLD, color=TEXT_DARK),
+                ft.ResponsiveRow(
+                    spacing=10,
+                    run_spacing=10,
+                    controls=[
+                        stat_card("Toplam Gelir", tl_fmt(r["toplam_gelir"]), ft.Icons.TRENDING_UP_ROUNDED, PRIMARY_GREEN),
+                        stat_card("Toplam Gider", tl_fmt(r["toplam_gider"]), ft.Icons.TRENDING_DOWN_ROUNDED, DANGER_RED),
+                        stat_card("Net Kâr / Zarar", tl_fmt(r["net_kar"]), ft.Icons.ACCOUNT_BALANCE_WALLET_ROUNDED, PRIMARY_GREEN if r["net_kar"] >= 0 else DANGER_RED),
+                        stat_card("Depo Giderleri", tl_fmt(r["depo_toplam"]), ft.Icons.INVENTORY_2_OUTLINED),
                     ],
                 ),
-                section_panel("📦 Depo Durumu", depo_durum_ui or [ft.Text("Depoda kayıtlı ürün yok.", color=TEXT_MUTED)]),
-                section_panel("🌱 Tarla Bazlı Kâr-Zarar Raporu", tarla_satirlari),
-                section_panel("📄 Rapor Dışa Aktarma", [ft.ElevatedButton("📥 Raporu CSV Kaydet", bgcolor="#68766a", color=ft.Colors.WHITE, on_click=csv_disa_aktar)]),
                 section_panel(
-                    "💾 Veri Güvenliği ve Yedekleme",
+                    "Gider Dağılımı",
                     [
-                        ft.Text("Kayıtların cihaz veritabanında saklanır. Düzenli olarak yedek almanı öneririm.", size=12, color=TEXT_MUTED),
-                        ft.ElevatedButton("📥 Bütün Verileri Yedekle (JSON)", bgcolor=PRIMARY_GREEN, color=ft.Colors.WHITE, on_click=yedek_disa_aktar),
-                        json_yedek_tf,
-                        ft.ElevatedButton("📤 JSON Yedeğinden Geri Yükle", bgcolor=ACCENT_GREEN, color=ft.Colors.WHITE, on_click=yedek_ice_aktar),
-                        ft.ElevatedButton("🗑️ Bütün Verileri Sil", bgcolor=DANGER_RED, color=ft.Colors.WHITE, on_click=tumunu_sil),
+                        ft.Text(f"• Sabit ve Ek Tarla Giderleri: {tl_fmt(r['tarla_sabit_ek'])}", size=13),
+                        ft.Text(f"• İlaç ve Gübre Kullanımı: {tl_fmt(r['ilac_gubre'])}", size=13),
+                        ft.Text(f"• Mazot Çıkışları: {tl_fmt(r['mazot_depo'])}", size=13),
+                        ft.Text(f"• Ortak Giderler: {tl_fmt(r['ortak_gider'])}", size=13),
                     ],
+                    ft.Icons.PIE_CHART_OUTLINE,
+                ),
+                section_panel("Depo Stok Durumu", depo_durum_ui or [ft.Text("Depoda kayıtlı ürün yok.", color=TEXT_MUTED)], ft.Icons.WAREHOUSE_OUTLINED),
+                section_panel("Tarla Bazlı Kâr-Zarar", tarla_satirlari, ft.Icons.ANALYTICS_OUTLINED),
+                section_panel(
+                    "Rapor ve Yedekleme",
+                    [
+                        primary_btn("CSV Raporu Dışa Aktar", ft.Icons.TABLE_VIEW_ROUNDED, csv_disa_aktar, "#4a5d50"),
+                        primary_btn("JSON Yedek Oluştur", ft.Icons.DOWNLOAD_ROUNDED, yedek_disa_aktar, PRIMARY_GREEN),
+                        json_yedek_tf,
+                        primary_btn("JSON Yedeğinden Geri Yükle", ft.Icons.UPLOAD_ROUNDED, yedek_ice_aktar, ACCENT_GREEN),
+                        primary_btn("Bütün Verileri Sıfırla", ft.Icons.DELETE_FOREVER_ROUNDED, confirm_reset_dialog, DANGER_RED),
+                    ],
+                    ft.Icons.BACKUP_OUTLINED,
                 ),
             ],
-            spacing=8,
-            expand=True,
         )
 
     def navigate_to(idx: int):
@@ -786,14 +1199,16 @@ def main(page: ft.Page):
     nav_bar = ft.NavigationBar(
         selected_index=0,
         bgcolor=CARD_BG,
+        elevation=8,
         indicator_color="#d5e8d8",
+        label_behavior=ft.NavigationBarLabelBehavior.ALWAYS_SHOW,
         on_change=lambda e: navigate_to(e.control.selected_index),
         destinations=[
-            ft.NavigationBarDestination(icon=ft.Icons.HOME_OUTLINED, selected_icon=ft.Icons.HOME, label="Tarlalar"),
-            ft.NavigationBarDestination(icon=ft.Icons.INVENTORY_2_OUTLINED, selected_icon=ft.Icons.INVENTORY_2, label="İlaç/Gübre"),
-            ft.NavigationBarDestination(icon=ft.Icons.LOCAL_GAS_STATION_OUTLINED, selected_icon=ft.Icons.LOCAL_GAS_STATION, label="Mazot"),
-            ft.NavigationBarDestination(icon=ft.Icons.RECEIPT_LONG_OUTLINED, selected_icon=ft.Icons.RECEIPT_LONG, label="Gider/Hasat"),
-            ft.NavigationBarDestination(icon=ft.Icons.ANALYTICS_OUTLINED, selected_icon=ft.Icons.ANALYTICS, label="Rapor"),
+            ft.NavigationBarDestination(icon=ft.Icons.HOME_OUTLINED, selected_icon=ft.Icons.HOME_ROUNDED, label="Tarlalar"),
+            ft.NavigationBarDestination(icon=ft.Icons.INVENTORY_2_OUTLINED, selected_icon=ft.Icons.INVENTORY_2_ROUNDED, label="İlaç/Gübre"),
+            ft.NavigationBarDestination(icon=ft.Icons.LOCAL_GAS_STATION_OUTLINED, selected_icon=ft.Icons.LOCAL_GAS_STATION_ROUNDED, label="Mazot"),
+            ft.NavigationBarDestination(icon=ft.Icons.RECEIPT_LONG_OUTLINED, selected_icon=ft.Icons.RECEIPT_LONG_ROUNDED, label="İşlemler"),
+            ft.NavigationBarDestination(icon=ft.Icons.ANALYTICS_OUTLINED, selected_icon=ft.Icons.ANALYTICS_ROUNDED, label="Rapor"),
         ],
     )
 
